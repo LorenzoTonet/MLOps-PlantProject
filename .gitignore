@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+
+# local files used mainly for debugging purposes
+plant_simulation_animation.mp4
+Data/main.py
+Data/synthetic_dataset_stats.csv
+Data/local_host_data.py
