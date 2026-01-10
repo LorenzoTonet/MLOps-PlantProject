@@ -157,7 +157,6 @@ def full_data(total_time_minutes, time_step, theta_init=90.0, theta_pwp=15.0, K_
     temp_data = np.zeros(total_steps)
 
     for i in range(total_steps - 1):
-        print('\nTime Step:', i, 'of', total_steps - 1)
         t_minutes = time[i]
 
         # get inputs at current time
@@ -184,7 +183,7 @@ def full_data(total_time_minutes, time_step, theta_init=90.0, theta_pwp=15.0, K_
 
     return time, humidity_data, light_data, temp_data
 
-def syntethic_dataset(k, total_time_minutes=7200, time_step=10, theta_init=90.0, theta_pwp=15.0, K_soil=0.8, K_crop=0.6, lambda_base=0.00005, 
+def synthetic_dataset(k, total_time_minutes=7200, time_step=10, theta_init=90.0, theta_pwp=15.0, K_soil=0.8, K_crop=0.6, lambda_base=0.00005, 
                       c_temp=0.000015, c_light=0.000020, L_peak=1000, T_avg=22.0, T_amplitude=3.0, T_lag=120.0):
     """
     This function computes some statistics on the full data obtained trough simulation of full_data and writes these statistics in a file.

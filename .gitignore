@@ -5,4 +5,4 @@ __pycache__/
 plant_simulation_animation.mp4
 Data/main.py
 Data/synthetic_dataset_stats.csv
-Data/local_host_data.py
+Data/read_plot.py
