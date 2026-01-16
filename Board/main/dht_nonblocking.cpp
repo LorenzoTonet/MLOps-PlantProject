@@ -31,7 +31,7 @@
 
 /* Number of milliseconds before a new sensor read may be initiated. */
 // #define COOLDOWN_TIME 2000
-#define COOLDOWN_TIME 20
+#define COOLDOWN_TIME 2000
 
 /*
  * Constructor for the sensor.  It remembers the pin number and the
