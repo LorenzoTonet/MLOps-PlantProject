@@ -4,5 +4,6 @@ __pycache__/
 # local files used mainly for debugging purposes
 plant_simulation_animation.mp4
 Data/main.py
+Model/
 Data/synthetic_dataset_stats.csv
 Data/read_plot.py
