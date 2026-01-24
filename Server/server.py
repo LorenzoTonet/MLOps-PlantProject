@@ -115,12 +115,12 @@ def main():
         raise AssertionError("No Board is currently connected.")
 
     # Connect to W&B under a new run
-    # wandb.init(
-    #     project=PROJECT_NAME,
-    #     entity=ENTITY,
-    #     name=RUN_NAME,
-    #     reinit=False,
-    # )
+    wandb.init(
+        project=PROJECT_NAME,
+        entity=ENTITY,
+        name=RUN_NAME,
+        reinit=False,
+    )
 
     # Initialize Serial Manager class and
     # configure local logging folder
@@ -149,11 +149,11 @@ def main():
             except Exception as exc:
                 print(f"Terminating with exception {exc}")
                 manager.stop()
-                # wandb.finish()
+                wandb.finish()
                 break
 
             # Log scalar metrics to W&B
-            # wandb.log(sample)
+            wandb.log(sample)
 
             # Local CSV write
             with open(csv_path, "a") as f:
@@ -168,7 +168,7 @@ def main():
 
     except Exception as exc:
         manager.stop()
-        # wandb.finish()
+        wandb.finish()
         print(f"Terminating with exception {exc}")
 
 

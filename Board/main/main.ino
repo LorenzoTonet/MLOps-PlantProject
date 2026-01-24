@@ -2,24 +2,24 @@
 #include <stdlib.h>
 
 // Inclusion of library for working with temperature sensor.
-#include "dht_nonblocking.h"
+#include <DHT.h>
 
 // Definition of sensor type.
-#define DHT_SENSOR_TYPE DHT_TYPE_11
+#define DHT_SENSOR_TYPE DHT11
 #define WINDOW_SIZE 6
 
 // Output periodicity (In intervals of 10 seconds)
 // = one log every five minutes
-static const int PERIODICITY = 1 * 6;
+static const int PERIODICITY = 5 * 6;
 
 // Pin definition
-static const int DHT_SENSOR_PIN = 2;
+static const int DHT_SENSOR_PIN = 22;
 static const int LIGHT_SENSOR_PIN = A0;
 static const int SOIL_SENSOR_PIN = A1;
 static const int DRY_WARNING_PIN = 7;
 
 // Setup 
-DHT_nonblocking dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
+DHT dht(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
 
 
 typedef struct Window {
@@ -30,8 +30,8 @@ typedef struct Window {
 
 // Variable definitions
 int counter;
-float temp_temperature;
-float temp_humidty;
+float temp_temperature = 0;
+float temp_humidty = 0;
 double light_sensor_value;
 double temp_sensor_value;
 double humid_sensor_value;
@@ -148,22 +148,6 @@ void serialPrintWindow(Window * wind, int digits)
 }
 
 
-/*
- * Poll for a measurement, keeping the state machine alive.  Returns
- * true if a measurement is available.
- */
-static bool measure_temp_and_humidity(float * temperature, float * humidity)
-{
-    static unsigned long measurement_timestamp = millis( );
-    if (dht_sensor.measure(temperature, humidity) == true)
-    {
-        measurement_timestamp = millis( );
-        return( true );
-    }
-    return(false);
-}
-
-
 void setup()
 {
     pinMode(DHT_SENSOR_PIN, INPUT);
@@ -180,6 +164,9 @@ void setup()
     temp_sensor_window       = newWind(WINDOW_SIZE);
     air_humid_sensor_window  = newWind(WINDOW_SIZE);
     soil_humid_sensor_window = newWind(WINDOW_SIZE);
+    
+    dht.begin();
+    delay(2000);
 }
 
 void loop()
@@ -192,11 +179,8 @@ void loop()
     soil_humid_sensor_value = 1023 - analogRead(SOIL_SENSOR_PIN);
 
     // Write to the variables the current value of humidity and temperature
-    if (measure_temp_and_humidity(&temp_temperature, &temp_humidty) == true)
-    {
-        temp_sensor_value = (double) temp_temperature;
-        humid_sensor_value = (double) temp_humidty;
-    }
+    temp_sensor_value = (double) dht.readTemperature();
+    humid_sensor_value = (double) dht.readHumidity();
 
     // Humidity warning
     if (soil_humid_sensor_value < 250)
@@ -254,5 +238,7 @@ void loop()
         // End of the line
         Serial.println();
     }
+    
+    // Test if this is the problem for the temperature and humidiy read
     delay(1000 * 10);
 }
