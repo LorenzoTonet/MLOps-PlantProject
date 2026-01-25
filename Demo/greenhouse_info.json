@@ -1,15 +1,19 @@
 {
   "sensors": [
-    "soil_humidity",
-    "air_humidity",
     "light",
-    "temperature"
+    "humidity",
+    "temperature",
+    "water"
+  ],
+  "stdev_sensors":[
+    "light_sd",
+    "humidity_sd",
+    "temperature_sd",
+    "water_sd"
   ],
   "plants": [
-    "Plant_1",
+    "plant_1",
     "Plant_2",
-    "Plant_3",
-    "Plant_4",
-    "Plant_5"
+    "Plant_1.0"
   ]
 }

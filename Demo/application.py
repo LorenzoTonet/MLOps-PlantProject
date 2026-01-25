@@ -1,23 +1,24 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Streamlit dashboard for greenhouse monitoring
-Reads from a Flask API /stream endpoint and plots sensor data.
 """
 
 import streamlit as st
 import pandas as pd
-import requests
-import json
+
 import time
 import matplotlib.pyplot as plt
-import random
+import matplotlib.dates as mdates
 from datetime import datetime
+import warnings
 
 from src.config_handling import *
 from src.plotting_functions import *
 from src.data_generators import *
 from src.plant_data_management import *
+from src.wab_stream import *
+from src.stream_simulation import *
+
+warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
 # -----------------------------
 # STREAMLIT CONFIG
@@ -25,9 +26,30 @@ from src.plant_data_management import *
 
 CONFIG_FILE = Path("greenhouse_info.json")
 
+Y_RANGES = {
+    "light": (0, 1023),
+    "temperature": (0, 50),
+    "humidity": (0, 100),
+    "water": (0, 1023),
+}
+
+SENSOR_LABELS = {
+    "light": "Light (lux)",
+    "temperature": "Temperature (°C)",
+    "humidity": "Air Humidity (%)",
+    "water": "Water level (%)"
+}
+
+SENSOR_COLORS = {
+    "light": "#F5A623",
+    "temperature": "#E74C3C",
+    "humidity": "#8B4513",
+    "water": "#4A90E2"
+}
+
 
 st.set_page_config(page_title="Greenhouse Monitor", layout="wide")
-st.title("🌱 Greenhouse Monitoring Dashboard")
+st.title("Greenhouse Monitoring Dashboard")
 
 config = load_config(CONFIG_FILE)
 
@@ -37,38 +59,67 @@ if "sensors" not in st.session_state:
 if "plants" not in st.session_state:
     st.session_state.plants = config["plants"]
 
+if "stdev_sensors" not in st.session_state:
+    st.session_state.stdev_sensors = config["stdev_sensors"]
+
+if "sensor_gen" not in st.session_state:
+    st.session_state.sensor_gen = sensor_data_generator("Data/plant_data.csv")
+
+# Initialize flag for monitoring state
+if "monitoring" not in st.session_state:
+    st.session_state.monitoring = False
+
+# Initialize thresholds for each sensor
+if "thresholds" not in st.session_state:
+    st.session_state.thresholds = {
+        "light": {"min": 200, "max": 800, "enabled": False},
+        "temperature": {"min": 15, "max": 30, "enabled": False},
+        "humidity": {"min": 40, "max": 80, "enabled": False},
+        "water": {"min": 300, "max": 900, "enabled": False},
+    }
+
 # -----------------------------
 # SIDEBAR - CONNECTION SETTINGS
 # -----------------------------
-st.sidebar.header("🔌 Connection Settings")
+st.sidebar.header("Connection Settings")
 
 connection_mode = st.sidebar.radio(
     "Data Source",
-    ["Flask Server", "Random Data"],
-    index=1  # Default to Random for testing
+    ["WaB", "Random Data", "Simulated"],
+    index=1
 )
 
-if connection_mode == "Flask Server":
+if connection_mode == "WaB":
     default_ip = st.session_state.get("ip", "127.0.0.1")
     default_port = st.session_state.get("port", "8000")
+    default_project = st.session_state.get("wab_project", "greenhouse-monitoring")
+    default_entity = st.session_state.get("wab_entity", "your-entity")
     
     ip = st.sidebar.text_input("Server IP", default_ip)
     port = st.sidebar.text_input("Server Port", default_port)
+    wab_project = st.sidebar.text_input("W&B Project", default_project)
+    wab_entity = st.sidebar.text_input("W&B Entity", default_entity)
     
     st.session_state.ip = ip
     st.session_state.port = port
+    st.session_state.wab_project = wab_project
+    st.session_state.wab_entity = wab_entity
     
     STREAM_URL = f"http://{ip}:{port}/stream"
     st.sidebar.markdown(f"**Connected to:** `{STREAM_URL}`")
-else:
-    st.sidebar.markdown("**Mode:** 🎲 Random Data Generation")
+    st.sidebar.markdown(f"**W&B Project:** `{wab_entity}/{wab_project}`")
+
+elif connection_mode == "Random Data":
+    st.sidebar.markdown("**Mode:** Random Data Generation")
+elif connection_mode == "Simulated":
+    st.sidebar.markdown("**Mode:** Simulated Data")
 
 st.sidebar.markdown("---")
 
 # -----------------------------
 # SIDEBAR - PLANT SELECTION
 # -----------------------------
-st.sidebar.header("🪴 Plant Selection")
+st.sidebar.header("Plant Selection")
 
 selected_plant = st.sidebar.selectbox(
     "Select Plant to Monitor",
@@ -80,17 +131,17 @@ selected_plant = st.sidebar.selectbox(
 
 st.sidebar.markdown("---")
 
-with st.sidebar.expander("➕ Add New Plant"):
+with st.sidebar.expander("Add New Plant"):
     with st.form("add_plant_form", clear_on_submit=True):
         new_plant_name = st.text_input("Plant name")
         submitted = st.form_submit_button("Add")
 
         if submitted and new_plant_name.strip():
             add_plant(new_plant_name, CONFIG_FILE)
-            st.success(f"🌱 Plant '{new_plant_name}' added")
+            st.success(f"Plant '{new_plant_name}' added")
             st.rerun()
 
-with st.sidebar.expander("🗑️ Remove Plant"):
+with st.sidebar.expander("Remove Plant"):
     if st.session_state.plants:
         plant_to_remove = st.selectbox(
             "Select plant to remove",
@@ -102,64 +153,77 @@ with st.sidebar.expander("🗑️ Remove Plant"):
 
         if confirm:
             remove_plant(plant_to_remove, CONFIG_FILE)
-            st.success(f"🗑️ Plant '{plant_to_remove}' removed")
+            st.success(f"Plant '{plant_to_remove}' removed")
             st.rerun()
     else:
         st.info("No plants to remove.")
 
 st.sidebar.markdown("---")
+
+# -----------------------------
+# SIDEBAR - THRESHOLDS SETTINGS
+# -----------------------------
+st.sidebar.header("Critical Thresholds")
+
+for sensor in st.session_state.sensors:
+    with st.sidebar.expander(f"{SENSOR_LABELS[sensor]}"):
+        enabled = st.checkbox(
+            "Enable thresholds",
+            value=st.session_state.thresholds[sensor]["enabled"],
+            key=f"enable_{sensor}"
+        )
+        st.session_state.thresholds[sensor]["enabled"] = enabled
+        
+        if enabled:
+            col1, col2 = st.columns(2)
+            with col1:
+                min_val = st.number_input(
+                    "Min",
+                    min_value=float(Y_RANGES[sensor][0]),
+                    max_value=float(Y_RANGES[sensor][1]),
+                    value=float(st.session_state.thresholds[sensor]["min"]),
+                    key=f"min_{sensor}"
+                )
+                st.session_state.thresholds[sensor]["min"] = min_val
+            
+            with col2:
+                max_val = st.number_input(
+                    "Max",
+                    min_value=float(Y_RANGES[sensor][0]),
+                    max_value=float(Y_RANGES[sensor][1]),
+                    value=float(st.session_state.thresholds[sensor]["max"]),
+                    key=f"max_{sensor}"
+                )
+                st.session_state.thresholds[sensor]["max"] = max_val
+
+st.sidebar.markdown("---")
+
 # -----------------------------
 # PARAMETERS
 # -----------------------------
-st.sidebar.header("⚙️ Settings")
+st.sidebar.header("Settings")
 REFRESH_INTERVAL = st.sidebar.slider("Refresh interval (seconds)", 0.1, 5.0, 1.0)
 MAX_POINTS = st.sidebar.slider("Number of samples to show", 50, 500, 150)
 
-# Sensori per ogni pianta
+st.sidebar.markdown("---")
+
+# -----------------------------
+# MONITORING CONTROLS
+# -----------------------------
+st.sidebar.header("Monitoring Controls")
+
+if st.sidebar.button("Start Monitoring" if not st.session_state.monitoring else "Pause Monitoring", 
+                     type="primary", use_container_width=True):
+    st.session_state.monitoring = not st.session_state.monitoring
+    st.rerun()
+
+
+if st.session_state.monitoring:
+    st.sidebar.success("Status: Recording")
+else:
+    st.sidebar.info("Status: Paused")
+
 SENSORS = st.session_state.sensors
-
-# Fixed y-axis ranges for each sensor
-Y_RANGES = {
-    "soil_humidity": (0, 100),      # %
-    "air_humidity": (0, 100),       # %
-    "light": (0, 1000),             # lux
-    "temperature": (10, 40),        # °C
-}
-
-SENSOR_LABELS = {
-    "soil_humidity": "Soil Humidity (%)",
-    "air_humidity": "Air Humidity (%)",
-    "light": "Light (lux)",
-    "temperature": "Temperature (°C)"
-}
-
-SENSOR_COLORS = {
-    "soil_humidity": "#8B4513",
-    "air_humidity": "#4A90E2",
-    "light": "#F5A623",
-    "temperature": "#E74C3C"
-}
-
-# -----------------------------
-# FUNCTIONS
-# -----------------------------
-
-def stream_data(url):
-    """Generator to read data lines from Flask SSE endpoint."""
-    try:
-        with requests.get(url, stream=True, timeout=10) as r:
-            for line in r.iter_lines():
-                if line and line.startswith(b"data:"):
-                    payload = line.replace(b"data: ", b"").decode("utf-8")
-                    try:
-                        yield json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-    except Exception as e:
-        st.error(f"Stream error: {e}")
-        return
-
-
 
 # -----------------------------
 # INITIALIZE SESSION STATE
@@ -172,70 +236,66 @@ for plant in st.session_state.plants:
 # -----------------------------
 # DISPLAY CURRENT PLANT STATUS
 # -----------------------------
-st.subheader(f"📊 Monitoring: {selected_plant}")
+st.subheader(f"Monitoring: {selected_plant}")
 
-# Placeholder for charts
-placeholder = st.empty()
+df = st.session_state[f"data_{selected_plant}"]
+if len(df) == 0:
+    st.info("Waiting for live data...")
 
-# Info message
-if len(st.session_state[f"data_{selected_plant}"]) == 0:
-    st.info("🟢 Waiting for live data...")
+chart_placeholders = {}
+for sensor in SENSORS:
+    st.markdown(f"### {SENSOR_LABELS[sensor]}")
+    chart_placeholders[sensor] = st.empty()
 
 # -----------------------------
-# LIVE PLOTTING LOOP
+# LIVE PLOTTING LOOP - SMOOTH UPDATE
 # -----------------------------
-if connection_mode == "Random Data":
-    snapshot = generate_snapshot()
-else:
-    data_gen = stream_data(STREAM_URL)
 
-for sample in snapshot:
-    # Il sample deve contenere: {"plant": "Tomato_1", "timestamp": ..., "soil_humidity": ..., etc.}
-    
-    if "plant" not in sample:
-        continue
-    
-    plant_name = sample["plant"]
-    
-    # Verifica che la pianta esista
-    if plant_name not in st.session_state.plants:
-        continue
-    
-    plant = sample["plant"]
-    df = st.session_state[f"data_{plant}"]
 
-    df.loc[len(df)] = sample
-
-    if len(df) > MAX_POINTS:
-        df = df.iloc[-MAX_POINTS:]
-
-    st.session_state[f"data_{plant}"] = df
+if st.session_state.monitoring:
     
-    # Plot only if this is the selected plant
-    if plant_name == selected_plant and len(df) > 0:
-        fig, axes = plt.subplots(2, 2, figsize=(14, 8))
-        axes = axes.flatten()
-        
-        for i, sensor in enumerate(SENSORS):
-            ax = axes[i]
-            ax.plot(df["timestamp"], df[sensor], 
-                   linewidth=2, 
-                   color=SENSOR_COLORS[sensor],
-                   marker='o',
-                   markersize=3)
+    while st.session_state.monitoring:
+
+        if connection_mode == "Random Data":
+            snapshot = generate_snapshot()
+        elif connection_mode == "Simulated":
+            snapshot = [next(st.session_state.sensor_gen)]
+        elif connection_mode == "WaB":
+            snapshot = fetch_wab_data()
+        else:
+            snapshot = []
+
+        for sample in snapshot:
             
-            # Current value
-            current_value = df[sensor].iloc[-1]
-            ax.set_title(f"{SENSOR_LABELS[sensor]} - Current: {current_value:.1f}", 
-                        fontsize=12, 
-                        fontweight="bold")
-            ax.set_ylim(Y_RANGES[sensor])
-            ax.set_xlabel("Timestamp")
-            ax.set_ylabel(SENSOR_LABELS[sensor])
-            ax.grid(True, linestyle="--", alpha=0.4)
+            if "plant" not in sample:
+                continue
+            
+            plant_name = sample["plant"]
+            
+            if plant_name not in st.session_state.plants:
+                continue
+            
+            df = st.session_state[f"data_{plant_name}"]
+
+            df.loc[len(df)] = sample
+
+            # Keep only last MAX_POINTS samples
+            if len(df) > MAX_POINTS:
+                df = df.iloc[-MAX_POINTS:].reset_index(drop=True)
+
+            st.session_state[f"data_{plant_name}"] = df
+
+        for sensor in SENSORS:
+            fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES)
+            if fig:
+                chart_placeholders[sensor].pyplot(fig)
+                plt.close(fig)
+
+        time.sleep(REFRESH_INTERVAL)
         
-        plt.tight_layout()
-        placeholder.pyplot(fig)
-        plt.close(fig)
-    
-    time.sleep(REFRESH_INTERVAL)
+else:
+    for sensor in SENSORS:
+        fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES)
+        if fig:
+            chart_placeholders[sensor].pyplot(fig)
+            plt.close(fig)
