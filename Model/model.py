@@ -1,8 +1,12 @@
+import shutil
 import pandas as pd
-from Data.dataset import synthetic_dataset
 import numpy as np
+import wandb
 from neuralforecast import NeuralForecast
 from neuralforecast.models import NHITS
+from utilsforecast.evaluation import evaluate
+from utilsforecast.losses import mae, mse
+
 
 """
 This script contains the functions to train an N-HITS model to forecast soil humidity levels for a plant, 
@@ -35,7 +39,7 @@ def prepare_data(stats_df):
     # ds is the datetime in datetime format
     df['ds'] = df['timestamp'].astype('datetime64[ns]')
     # unique_id
-    df['unique_id'] = df['plant_id']
+    df['unique_id'] = 1
     # y is the target variable, in our case soil humidity
     df['y'] = df['water_w_mean']
 
@@ -44,12 +48,14 @@ def prepare_data(stats_df):
     df['time_cos'] = np.cos((pd.to_datetime(df['ds']).dt.hour * 60 + pd.to_datetime(df['ds']).dt.minute) / 1440 * 2 * np.pi)
 
     # we mark the watering and the next 3 samples with a new column 'is_watering'
-    spike_indices = df.index[df['water_w_mean'].diff() > 2.0]
+    spike_indices = df.index[df['water_w_mean'].diff() > 100.0]
     df['is_watering'] = 0
     for idx in spike_indices:
         # mark the spike and the next 3 samples as watering event
         loc = df.index.get_loc(idx)
         df.iloc[loc : loc + 4, df.columns.get_loc('is_watering')] = 1
+
+    df = df[['ds', 'unique_id', 'y', 'time_sin', 'time_cos', 'is_watering', 'light_w_mean', 'temp_w_mean', 'humid_w_mean', 'water_w_mean', 'light_w_sd', 'humid_w_sd', 'temp_w_sd', 'water_w_sd']]
 
     return df
 
@@ -62,7 +68,8 @@ def train(df):
     - df: DataFrame containing the time series data with necessary features.
     
     Outputs:
-    - model: Trained N-HITS model.
+    - nf: Trained N-HITS model.
+    - nhits_mae: Mean Absolute Error of the model on cross-validation.
     '''
 
     # define all exogenous columns
@@ -71,30 +78,75 @@ def train(df):
     # cols I won't know in the future
     hist_exog = [col for col in df.columns if col not in ['ds', 'unique_id', 'y'] + futr_exog]
 
-    # create NeuralForecast object
-
+    model_dir = f'./Model/NHITS_models/{pd.Timestamp.now().strftime("%Y%m%d-%H%M%S")}'
     horizon = 144  # how many steps to forecast (1 hour = 12 steps)
     input_size = 288 # how many past steps to use
 
+    # WandB run
+    run = wandb.init(
+        entity="MLOps-PlantProject",
+        project="models",
+        name=f"N-HITS-{pd.Timestamp.now().strftime('%Y%m%d-%H%M%S')}",
+        config={
+            "freq": "5min",
+            "horizon": horizon,
+            "input_size": input_size,
+            "model": "NHITS",
+            "learning_rate": 1e-3
+        }
+    )
+
+    # create NeuralForecast object
     model = NHITS(
         h=horizon,
         input_size=input_size,
         futr_exog_list=futr_exog, 
         hist_exog_list=hist_exog,
-        max_steps=1500,
+        max_steps=100,
         learning_rate=1e-3,
         scaler_type='standard' 
     )
 
     nf = NeuralForecast(models=[model], freq='5min')
-    
+
+    # compute cross-validation
+    cv_df = nf.cross_validation(
+        df=df,
+        h=horizon, 
+        n_windows=3
+    )
+    # stats
+    stats = evaluate(
+        cv_df,
+        metrics=[mae],
+        target_col='y'
+    )
+
     # train
-    nf.fit(df=df[['unique_id', 'ds', 'y'] + futr_exog + hist_exog])
+    nf.fit(df=df)
+    # save the model locally
+    nf.save(path = model_dir, overwrite=True)
 
-    # save the model
-    nf.save(path = 'Models/NHITS_models/', overwrite=True)
+    # take the average of the mae stat
+    nhits_mae = stats['NHITS'].mean()
 
-    return nf
+    wandb.log({"mae": nhits_mae})
+
+    model_artifact = wandb.Artifact(
+        name="nhits-forecast-model", 
+        type="model",
+        metadata={"mae": nhits_mae}
+    )
+    model_artifact.add_dir(model_dir) 
+    run.log_artifact(model_artifact)
+
+    run.finish()
+
+    # remove the local model directory because it's saved in W&B
+    shutil.rmtree("Model/NHITS_models/")
+    shutil.rmtree("lightning_logs/")
+    
+    return nf, nhits_mae
 
 
 def predict(current_df, nf, threshold=30.0):
@@ -103,8 +155,12 @@ def predict(current_df, nf, threshold=30.0):
 
     Inputs:
     - current_df: DataFrame of the last steps (same len as the training input_size)
+    - nf: Trained NeuralForecast object with N-HITS model.
+    - threshold: Humidity threshold to determine watering event.
     
     Outputs:
+    - status: 1 if a watering event is predicted within the horizon, -1 otherwise.
+    - result: datetime of the next watering event if status is 1, else predicted humidity at the last horizon step.
     - forecast_df: DataFrame with predictions.
     '''
 
