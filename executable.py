@@ -11,12 +11,12 @@ import matplotlib.dates as mdates
 from datetime import datetime
 import warnings
 
-from src.config_handling import *
-from src.plotting_functions import *
-from src.data_generators import *
-from src.plant_data_management import *
-from src.wab_stream import *
-from src.stream_simulation import *
+from Demo.src.config_handling import *
+from Demo.src.plotting_functions import *
+from Demo.src.data_generators import *
+from Demo.src.plant_data_management import *
+from Demo.src.wab_stream import *
+from Demo.src.stream_simulation import *
 
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
@@ -24,7 +24,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 # STREAMLIT CONFIG
 # -----------------------------
 
-CONFIG_FILE = Path("greenhouse_info.json")
+CONFIG_FILE = Path("Demo/greenhouse_info.json")
 config = load_config(CONFIG_FILE)
 
 Y_RANGES = {

@@ -6,7 +6,7 @@ import time
 import pandas as pd
 
 from datetime import datetime
-from src.config_handling import *
+from Demo.src.config_handling import *
 
 def init_plant_data(plant_name):
     """
@@ -15,7 +15,7 @@ def init_plant_data(plant_name):
         plant_name (str): Name of the plant.
     """
     if f"data_{plant_name}" not in st.session_state:
-        st.session_state[f"data_{plant_name}"] = pd.DataFrame(columns=["timestamp"] + st.session_state.sensors + st.session_state.stdev_sensors)
+        st.session_state[f"data_{plant_name}"] = pd.DataFrame(columns=["timestamp"] + st.session_state.mean_sensors + st.session_state.stdev_sensors)
 
 
 def add_plant(plant_name, CONFIG_FILE):

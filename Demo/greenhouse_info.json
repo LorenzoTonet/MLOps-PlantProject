@@ -1,19 +1,47 @@
 {
   "sensors": [
     "light",
-    "humidity",
-    "temperature",
+    "humid",
+    "temp",
     "water"
-  ],
-  "stdev_sensors":[
-    "light_sd",
-    "humidity_sd",
-    "temperature_sd",
-    "water_sd"
   ],
   "plants": [
     "plant_1",
-    "Plant_2",
-    "Plant_1.0"
-  ]
+    "1",
+    "1.0"
+  ],
+  "stdev_sensors": [
+    "light_w_sd",
+    "humid_w_sd",
+    "temp_w_sd",
+    "water_w_sd"
+  ],
+  "mean_sensors": [
+    "light_w_mean",
+    "humid_w_mean",
+    "temp_w_mean",
+    "water_w_mean"
+  ],
+  "thresholds": {
+    "light": {
+      "min": 200,
+      "max": 800,
+      "enabled": false
+    },
+    "temp": {
+      "min": 15,
+      "max": 30,
+      "enabled": false
+    },
+    "humid": {
+      "min": 40,
+      "max": 80,
+      "enabled": false
+    },
+    "water": {
+      "min": 300,
+      "max": 900,
+      "enabled": false
+    }
+  }
 }

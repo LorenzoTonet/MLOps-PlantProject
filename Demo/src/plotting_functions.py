@@ -1,20 +1,16 @@
 import streamlit as st
 import pandas as pd
-import requests
-import json
-import time
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import random
-from datetime import datetime
-import warnings
 
-from src.config_handling import *
-from src.plotting_functions import *
-from src.data_generators import *
-from src.plant_data_management import *
 
-from src.stream_simulation import *
+from Demo.src.config_handling import *
+from Demo.src.plotting_functions import *
+from Demo.src.data_generators import *
+from Demo.src.plant_data_management import *
+
+from Demo.src.stream_simulation import *
 
 def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES):
     """Helper function to create and return a single sensor plot"""
@@ -26,7 +22,7 @@ def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES):
     fig, ax = plt.subplots(figsize=(14, 4))
     
     # Plot main line
-    ax.plot(df["timestamp"], df[sensor], 
+    ax.plot(df["timestamp"], df[f"{sensor}_w_mean"], 
            linewidth=2.5, 
            color=SENSOR_COLORS[sensor],
            marker='o',
@@ -35,8 +31,8 @@ def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES):
     
     # Plot standard deviation band
     ax.fill_between(df["timestamp"], 
-                   df[sensor] - df[f"{sensor}_sd"], 
-                   df[sensor] + df[f"{sensor}_sd"],
+                   df[f"{sensor}_w_mean"] - df[f"{sensor}_w_sd"], 
+                   df[f"{sensor}_w_mean"] + df[f"{sensor}_w_sd"],
                    alpha=0.2,
                    color=SENSOR_COLORS[sensor],
                    label=f"±1 SD")
@@ -67,7 +63,7 @@ def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES):
                   alpha=0.1, color='red')
     
     # Current value and status
-    current_value = df[sensor].iloc[-1]
+    current_value = df[f"{sensor}_w_mean"].iloc[-1]
     status = "OK"
     
     if st.session_state.thresholds[sensor]["enabled"]:
