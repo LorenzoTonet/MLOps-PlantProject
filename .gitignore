@@ -13,3 +13,7 @@ lightning_logs/
 Data/main.py
 Data/synthetic_dataset_stats.csv
 Data/read_plot.py
+
+# local data logging directory and W&B folder
+wandb
+Server/data/*
