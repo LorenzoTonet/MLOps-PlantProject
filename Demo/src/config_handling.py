@@ -28,6 +28,7 @@ def save_config(CONFIG_FILE):
         "sensors": st.session_state.sensors,
         "plants": st.session_state.plants,
         "stdev_sensors": st.session_state.stdev_sensors,
+        "mean_sensors": st.session_state.mean_sensors,
         "thresholds": st.session_state.get("thresholds", {})
     }
     with open(CONFIG_FILE, "w") as f:

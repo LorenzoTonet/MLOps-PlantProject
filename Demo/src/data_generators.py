@@ -17,16 +17,16 @@ def generate_random_data(plant_name: str) -> dict:
         dict: A dictionary containing random sensor data.
     """
     return {
-        "plant": plant_name,
+        "plant_id": plant_name,
         "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "light": random.uniform(200, 800),
-        "light_sd": random.uniform(5, 20),
-        "temperature": random.uniform(18, 32),
-        "temperature_sd": random.uniform(1, 5),
-        "humidity": random.uniform(40, 80),
-        "humidity_sd": random.uniform(2, 10),
-        "water": random.uniform(50, 90),
-        "water_sd": random.uniform(3, 15),
+        "light_w_mean": random.uniform(200, 800),
+        "light_w_sd": random.uniform(5, 20),
+        "temp_w_mean": random.uniform(18, 32),
+        "temp_w_sd": random.uniform(1, 5),
+        "humid_w_mean": random.uniform(40, 80),
+        "humid_w_sd": random.uniform(2, 10),
+        "water_w_mean": random.uniform(50, 90),
+        "water_w_sd": random.uniform(3, 15),
     }
 
 
@@ -54,16 +54,16 @@ def generate_snapshot():
 
     return [
         {
-        "plant": plant,
+        "plant_id": plant,
         "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "light": random.uniform(200, 800),
-        "light_sd": random.uniform(5, 20),
-        "temperature": random.uniform(18, 32),
-        "temperature_sd": random.uniform(1, 5),
-        "humidity": random.uniform(40, 80),
-        "humidity_sd": random.uniform(2, 10),
-        "water": random.uniform(50, 90),
-        "water_sd": random.uniform(3, 15),
+        "light_w_mean": random.uniform(200, 800),
+        "light_w_sd": random.uniform(5, 20),
+        "temp_w_mean": random.uniform(18, 32),
+        "temp_w_sd": random.uniform(1, 5),
+        "humid_w_mean": random.uniform(40, 80),
+        "humid_w_sd": random.uniform(2, 10),
+        "water_w_mean": random.uniform(50, 90),
+        "water_w_sd": random.uniform(3, 15),
     }
         for plant in st.session_state.plants
     ]

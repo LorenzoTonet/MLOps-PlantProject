@@ -8,7 +8,7 @@ from datetime import datetime
 import time
 import os
 
-from src.config_handling import load_api_key
+from Demo.src.config_handling import load_api_key
 
 def initialize_wandb_api():
     """
@@ -100,7 +100,7 @@ def fetch_wab_data():
             return []
         
         wanted_keys = {
-            "plant",
+            "plant_id",
             "timestamp",
             "light_value", "light_w_sd",
             "temp_value", "temp_w_sd",
@@ -115,7 +115,7 @@ def fetch_wab_data():
         }
         
         sensor_data = {
-            "plant": filtered_data.get("plant", "plant_1"),
+            "plant": f"plant_{int(filtered_data.get("plant_id", 1))}",
             "timestamp": format_timestamp(filtered_data.get("timestamp")),
             
             "light": filtered_data.get("light_value", 0.0),
@@ -184,3 +184,117 @@ def show_wab_status():
                 st.sidebar.info(f"Last check: {int(time_since_fetch)}s ago")
     else:
         st.sidebar.error("W&B Not Connected")
+
+
+
+def fetch_wab_data_new():
+    """
+    Fetches the latest sensor data from W&B with smart caching.
+    Only fetches new data when available, avoiding unnecessary API calls.
+    """
+    try:
+        # Initialize tracking variables
+        if "last_wab_fetch_time" not in st.session_state:
+            st.session_state.last_wab_fetch_time = 0
+        
+        if "last_wab_timestamp" not in st.session_state:
+            st.session_state.last_wab_timestamp = None
+        
+        if "last_wab_step" not in st.session_state:
+            st.session_state.last_wab_step = -1
+        
+        if "wab_api" not in st.session_state:
+            st.session_state.wab_api = None
+        
+        # Minimum time between API calls (in seconds)
+        MIN_FETCH_INTERVAL = st.session_state.get("wab_poll_interval", 10)
+        
+        current_time = time.time()
+        time_since_last_fetch = current_time - st.session_state.last_wab_fetch_time
+        
+        if time_since_last_fetch < MIN_FETCH_INTERVAL:
+            return []
+        
+        st.session_state.last_wab_fetch_time = current_time
+
+        if st.session_state.wab_api is None:
+            st.session_state.wab_api = initialize_wandb_api()
+            
+        if st.session_state.wab_api is None:
+            return []
+        
+        api = st.session_state.wab_api
+        
+        # Get project from session state
+        project = f"{st.session_state.wab_entity}/{st.session_state.wab_project}"
+        
+        # Get the most recent run
+        runs = api.runs(project, order="-created_at")
+        if not runs:
+            st.sidebar.warning("No runs found in W&B project")
+            return []
+        
+        latest_run = runs[0]
+        current_step = latest_run.lastHistoryStep
+        
+        if current_step <= st.session_state.last_wab_step:
+            return []
+        
+        history = list(latest_run.scan_history(min_step=current_step))
+        
+        if not history:
+            return []
+        
+        last_record = history[-1]
+        
+        record_timestamp = last_record.get("_timestamp") or last_record.get("timestamp")
+        if record_timestamp and record_timestamp == st.session_state.last_wab_timestamp:
+            return []
+        
+        wanted_keys = {
+            "timestamp",
+            "light_w_mean", "light_w_sd",
+            "temp_w_mean", "temp_w_sd",
+            "humid_w_mean", "humid_w_sd",
+            "water_w_mean", "water_w_sd",
+        }
+        
+        sensor_data = {
+            k: last_record[k]
+            for k in wanted_keys
+            if k in last_record
+        }
+        sensor_data["timestamp"] = format_timestamp(sensor_data.get("timestamp"))
+        sensor_data["plant_id"] = f"plant_{int(last_record['plant_id'])}"
+        st.session_state.last_wab_step = current_step
+        st.session_state.last_wab_timestamp = record_timestamp
+        
+        return [sensor_data]
+        
+    except Exception as e:
+        st.sidebar.error(f"W&B Error: {str(e)}")
+        import traceback
+        st.sidebar.error(traceback.format_exc())
+        return []
+    
+def format_timestamp(ts):
+    """
+    Formats timestamp to HH:MM:SS format.
+    Args:
+        ts (int, float, str): Timestamp in seconds or nanoseconds, or string.
+    Returns:
+        str: Formatted time string.
+    """
+    try:
+        if isinstance(ts, (int, float)):
+            if ts > 1e12:
+                dt = datetime.fromtimestamp(ts / 1e9)
+            else:
+                dt = datetime.fromtimestamp(ts)
+            return dt.strftime("%H:%M:%S")
+        elif isinstance(ts, str):
+            return ts
+        else:
+            return datetime.now().strftime("%H:%M:%S")
+    except:
+        return datetime.now().strftime("%H:%M:%S")
