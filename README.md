@@ -9,7 +9,7 @@
 ### Real-time Monitoring Dashboard
 Interactive dashboard for visualizing plant conditions.
 
-| Run locally: `streamlit run src/dashboard/executable.py`
+| Run locally: `streamlit run executable.py`
 
 **Features:**
 
@@ -23,7 +23,46 @@ Interactive dashboard for visualizing plant conditions.
 
 
 ## Project Structure
+```bash
+    .
+    ├── Board
+    │   ├── main
+    │   │   └── main.ino
+    │   ├── info.md
+    │   └── makefile
+    ├── Data
+    │   ├── dataset.py
+    │   ├── info.md
+    │   ├── __init__.py
+    │   └── local_host_data.py
+    ├── Demo
+    │   ├── Data
+    │   │   ├── plant_data_simulation.csv
+    │   ├── src
+    │   │   ├── config_handling.py
+    │   │   ├── data_generators.py
+    │   │   ├── plant_data_management.py
+    │   │   ├── plotting_functions.py
+    │   │   ├── stream_simulation.py
+    │   │   └── wab_stream.py
+    │   ├── application.py
+    │   ├── greenhouse_info.json
+    ├── Documents
+    │   ├── info.md
+    │   ├── Project_Proposal_Development_Plan_02.pdf
+    │   └── System_Specification_Document_01.pdf
+    ├── Model
+    │   ├── info.md
+    │   ├── model.py
+    │   └── train.py
+    ├── Server
+    │   └── server.py
+    ├── executable.py
+    ├── api_key.json
+    ├── README.md
+    └── requirements.txt
 
+```
 ## Getting Started
 
 ### Prerequisites
@@ -38,7 +77,6 @@ Interactive dashboard for visualizing plant conditions.
 git clone https://github.com/LorenzoTonet/MLOps-PlantMo.git
 cd MLOps-PlantMo
 pip install -r requirements.txt
-
 ```
 
 ### Quick Start
@@ -47,7 +85,7 @@ pip install -r requirements.txt
 
 2. **Launch the dashboard**:
    ```bash
-   streamlit run src/dashboard/streamlit_app.py
+   streamlit run executable.py
    ```
 
 3. **Add your plants, customize threshold values, set your ideal update time and the number of data-points to visualize** (can be easily done frome the sideboard!):
