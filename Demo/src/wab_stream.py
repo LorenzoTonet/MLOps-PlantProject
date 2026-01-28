@@ -7,6 +7,7 @@ import streamlit as st
 from datetime import datetime
 import time
 import os
+import pandas
 
 from Demo.src.config_handling import load_api_key
 
@@ -186,6 +187,39 @@ def show_wab_status():
         st.sidebar.error("W&B Not Connected")
 
 
+def fetch_historic_data(n):
+
+    # Initalize WaB API
+    st.session_state.wab_api = initialize_wandb_api()
+            
+    # Get project from session state
+    api = st.session_state.wab_api
+    project = f"{st.session_state.wab_entity}/{st.session_state.wab_project}"
+        
+    # Get the most recent run
+    runs = api.runs(project, order="-created_at")
+    latest_run = runs[0]
+    current_step = latest_run.lastHistoryStep
+    
+    # Obtain the last n samples and cast them into a dataframe
+    history = list(latest_run.scan_history(min_step=(current_step-n)))
+
+    wanted_keys = {
+        "timestamp",
+        "light_w_mean", "light_w_sd",
+        "temp_w_mean", "temp_w_sd",
+        "humid_w_mean", "humid_w_sd",
+        "water_w_mean", "water_w_sd",
+    } 
+        
+    def fixobs(x):
+        sensor_data = {k: x[k] for k in wanted_keys if k in x}
+        sensor_data["timestamp"] = format_timestamp(sensor_data.get("timestamp"))
+        sensor_data["plant_id"] = f"plant_{int(x['plant_id'])}"
+        return sensor_data
+
+    history = list(map(fixobs, history))
+    return history
 
 def fetch_wab_data_new():
     """

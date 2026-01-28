@@ -12,9 +12,10 @@ from Demo.src.plant_data_management import *
 
 from Demo.src.stream_simulation import *
 
-def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES):
+def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS):
     """Helper function to create and return a single sensor plot"""
-    df = st.session_state[f"data_{plant_name}"]
+    fake_df = st.session_state[f"data_{plant_name}"].copy()
+    df = fake_df.iloc[-MAX_POINTS:]
     
     if len(df) == 0:
         return None

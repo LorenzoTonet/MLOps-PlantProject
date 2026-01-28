@@ -48,7 +48,6 @@ SENSOR_COLORS = {
     "water": "#4A90E2"
 }
 
-
 st.set_page_config(page_title="Greenhouse Monitor", layout="wide")
 st.title("Greenhouse Monitoring Dashboard")
 
@@ -244,6 +243,12 @@ for plant in st.session_state.plants:
     init_plant_data(plant)
 
 # -----------------------------
+# PULL HISTORY FOR PLOTTING AND MODEL
+# -----------------------------
+st.session_state.first_data_pulled = False
+HISTORY_LENGTH = 10
+
+# -----------------------------
 # DISPLAY CURRENT PLANT STATUS
 # -----------------------------
 st.subheader(f"Monitoring: {selected_plant}")
@@ -264,6 +269,16 @@ for sensor in SENSORS:
 if st.session_state.monitoring:
     
     while st.session_state.monitoring:
+        # !!!!!! ADDED !!!!!!
+        if not st.session_state.first_data_pulled:
+            hist = fetch_historic_data(HISTORY_LENGTH)
+            print(hist)
+            for obs in hist:
+                plant_name = obs['plant_id']
+                df = st.session_state[f"data_{plant_name}"]
+                df.loc[len(df)] = obs
+            st.session_state.first_data_pulled = True
+        # !!!!!! ADDED !!!!!!
 
         if connection_mode == "Random Data":
             snapshot = generate_snapshot()
@@ -283,6 +298,7 @@ if st.session_state.monitoring:
                 continue
             
             plant_name = sample["plant_id"]
+            print(plant_name)
             
             if plant_name not in st.session_state.plants:
                 print(f"Unknown plant '{plant_name}' in sample:", sample)
@@ -294,13 +310,13 @@ if st.session_state.monitoring:
             df.loc[len(df)] = sample
 
             # Keep only last MAX_POINTS samples
-            if len(df) > MAX_POINTS:
-                df = df.iloc[-MAX_POINTS:].reset_index(drop=True)
+            if len(df) > HISTORY_LENGTH:
+                df = df.iloc[-HISTORY_LENGTH:].reset_index(drop=True)
 
             st.session_state[f"data_{plant_name}"] = df
 
         for sensor in SENSORS:
-            fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES)
+            fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS)
             if fig:
                 chart_placeholders[sensor].pyplot(fig)
                 plt.close(fig)
@@ -309,7 +325,7 @@ if st.session_state.monitoring:
         
 else:
     for sensor in SENSORS:
-        fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES)
+        fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS)
         if fig:
             chart_placeholders[sensor].pyplot(fig)
             plt.close(fig)
