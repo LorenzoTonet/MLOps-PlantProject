@@ -7,8 +7,8 @@
   ],
   "plants": [
     "plant_1",
-    "1",
-    "1.0"
+    "plant_2",
+    "plant_3"
   ],
   "stdev_sensors": [
     "light_w_sd",

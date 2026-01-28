@@ -19,3 +19,5 @@ artifacts/
 # local data logging directory and W&B folder
 wandb
 Server/data/*
+
+api_key.json
