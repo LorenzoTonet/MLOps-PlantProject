@@ -94,3 +94,122 @@ def plot_sensor(plant_name, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_
     
     plt.tight_layout()
     return fig
+
+
+def plot_sensor_wtr(plant_name, sensor, preddf, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS):
+
+    """Helper function to create and return a single sensor plot"""
+    
+    fake_df = st.session_state[f"data_{plant_name}"].copy()
+    fake_df["timestamp"] = pd.to_datetime(fake_df["timestamp"])
+    df = fake_df.iloc[-MAX_POINTS:]
+
+    if df.empty:
+        return None
+
+    preddf = preddf.copy()
+    preddf["ds"] = pd.to_datetime(preddf["ds"])
+
+    his_points = df[["timestamp", f"{sensor}_w_mean"]]
+    mod_points = preddf[["ds", "NHITS"]]
+
+    xx = list(his_points["timestamp"]) + list(mod_points["ds"])
+    cc = [0] * len(his_points) + [1] * len(mod_points)
+    yy = list(his_points[f"{sensor}_w_mean"]) + list(mod_points["NHITS"])
+    print(xx, yy, cc)
+
+    fig, ax = plt.subplots(figsize=(14, 4))
+
+    # Plot main line
+    hist_mask = [c == 0 for c in cc]
+    pred_mask = [c == 1 for c in cc]
+
+    xx_hist = [x for x, m in zip(xx, hist_mask) if m]
+    yy_hist = [y for y, m in zip(yy, hist_mask) if m]
+
+    xx_pred = [x for x, m in zip(xx, pred_mask) if m]
+    yy_pred = [y for y, m in zip(yy, pred_mask) if m]
+
+    fig, ax = plt.subplots(figsize=(14, 4))
+
+    ax.plot(
+        xx_hist,
+        yy_hist,
+        linewidth=2.5,
+        color=SENSOR_COLORS[sensor],
+        marker='o',
+        markersize=4,
+        label='Historical'
+    )
+
+    # prediction
+    ax.plot(
+        xx_pred,
+        yy_pred,
+        linewidth=2.5,
+        color='orange',
+        marker='o',
+        markersize=4,
+        label='Prediction'
+    )
+
+    hour_fmt = mdates.DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(hour_fmt)
+    ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+        
+    # Add threshold lines if enabled
+    if st.session_state.thresholds[sensor]["enabled"]:
+        min_threshold = st.session_state.thresholds[sensor]["min"]
+        max_threshold = st.session_state.thresholds[sensor]["max"]
+        
+        ax.axhline(y=min_threshold, 
+                  color='red', 
+                  linestyle='--', 
+                  linewidth=2, 
+                  alpha=0.7,
+                  label=f'Min threshold ({min_threshold})')
+        
+        ax.axhline(y=max_threshold, 
+                  color='red', 
+                  linestyle='--', 
+                  linewidth=2, 
+                  alpha=0.7,
+                  label=f'Max threshold ({max_threshold})')
+        
+        # Highlight critical zones
+        ax.axhspan(Y_RANGES[sensor][0], min_threshold, 
+                  alpha=0.1, color='red')
+        ax.axhspan(max_threshold, Y_RANGES[sensor][1], 
+                  alpha=0.1, color='red')
+    
+    # Current value and status
+    current_value = df[f"{sensor}_w_mean"].iloc[-1]
+    status = "OK"
+    
+    if st.session_state.thresholds[sensor]["enabled"]:
+        if current_value < st.session_state.thresholds[sensor]["min"]:
+            status = "TOO LOW"
+        elif current_value > st.session_state.thresholds[sensor]["max"]:
+            status = "TOO HIGH"
+    
+    ax.set_title(f"{SENSOR_LABELS[sensor]} - Current: {current_value:.1f} - {status}", 
+                fontsize=13, 
+                fontweight="bold")
+    ax.set_ylim(Y_RANGES[sensor])
+    ax.set_xlabel("Timestamp", fontsize=11)
+    ax.set_ylabel(SENSOR_LABELS[sensor], fontsize=11)
+    ax.grid(True, linestyle="--", alpha=0.4)
+    
+    # Configure x-axis to prevent label overlap
+    n_points = len(df)
+    max_ticks = 10
+    if n_points > max_ticks:
+        tick_interval = max(1, n_points // max_ticks)
+        tick_indices = list(range(0, n_points, tick_interval))
+        ax.set_xticks([df["timestamp"].iloc[i] for i in tick_indices])
+    
+    # Rotate labels to prevent overlap
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+    
+    plt.tight_layout()
+    return fig

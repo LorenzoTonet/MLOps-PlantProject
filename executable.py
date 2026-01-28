@@ -18,6 +18,8 @@ from Demo.src.plant_data_management import *
 from Demo.src.wab_stream import *
 from Demo.src.stream_simulation import *
 
+from Model.model import *
+
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
 # -----------------------------
@@ -246,7 +248,7 @@ for plant in st.session_state.plants:
 # PULL HISTORY FOR PLOTTING AND MODEL
 # -----------------------------
 st.session_state.first_data_pulled = False
-HISTORY_LENGTH = 10
+HISTORY_LENGTH = 20
 
 # -----------------------------
 # DISPLAY CURRENT PLANT STATUS
@@ -269,7 +271,6 @@ for sensor in SENSORS:
 if st.session_state.monitoring:
     
     while st.session_state.monitoring:
-        # !!!!!! ADDED !!!!!!
         if not st.session_state.first_data_pulled:
             hist = fetch_historic_data(HISTORY_LENGTH)
             print(hist)
@@ -278,7 +279,7 @@ if st.session_state.monitoring:
                 df = st.session_state[f"data_{plant_name}"]
                 df.loc[len(df)] = obs
             st.session_state.first_data_pulled = True
-        # !!!!!! ADDED !!!!!!
+            fetch_wab_model()
 
         if connection_mode == "Random Data":
             snapshot = generate_snapshot()
@@ -315,8 +316,18 @@ if st.session_state.monitoring:
 
             st.session_state[f"data_{plant_name}"] = df
 
+        # Model inference
+        model = st.session_state.model
+        print(df)
+        treated_data = prepare_data(df)
+        _, _, preddf = predict(treated_data, model, 300)
+
         for sensor in SENSORS:
-            fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS)
+            if sensor == "water":
+                fig = plot_sensor_wtr(selected_plant, sensor, preddf, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS)
+            else:
+                fig = plot_sensor(selected_plant, sensor, SENSOR_COLORS, SENSOR_LABELS, Y_RANGES, MAX_POINTS)
+            
             if fig:
                 chart_placeholders[sensor].pyplot(fig)
                 plt.close(fig)

@@ -8,6 +8,7 @@ from datetime import datetime
 import time
 import os
 import pandas
+from neuralforecast import NeuralForecast
 
 from Demo.src.config_handling import load_api_key
 
@@ -143,6 +144,7 @@ def fetch_wab_data():
         st.sidebar.error(traceback.format_exc())
         return []
     
+
 def format_timestamp(ts):
     """
     Formats timestamp to HH:MM:SS format.
@@ -220,6 +222,16 @@ def fetch_historic_data(n):
 
     history = list(map(fixobs, history))
     return history
+
+
+def fetch_wab_model():
+    api = st.session_state.wab_api
+    runs = api.runs(f"MLOps-PlantProject/models", order="-created_at")
+    artifacts = runs[0].logged_artifacts()
+    model_artifact = next(a for a in artifacts if a.type == 'model')
+    model_dir = model_artifact.download("Model/artifacts")
+    nf = NeuralForecast.load(path=model_dir)
+    st.session_state.model = nf
 
 def fetch_wab_data_new():
     """

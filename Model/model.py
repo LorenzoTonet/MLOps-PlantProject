@@ -79,8 +79,8 @@ def train(df):
     hist_exog = [col for col in df.columns if col not in ['ds', 'unique_id', 'y'] + futr_exog]
 
     model_dir = f'./Model/NHITS_models/{pd.Timestamp.now().strftime("%Y%m%d-%H%M%S")}'
-    horizon = 144  # how many steps to forecast (1 hour = 12 steps)
-    input_size = 288 # how many past steps to use
+    horizon = 7  # how many steps to forecast (1 hour = 12 steps)
+    input_size = 18 # how many past steps to use
 
     # WandB run
     run = wandb.init(
@@ -149,7 +149,7 @@ def train(df):
     return nf, nhits_mae
 
 
-def predict(current_df, nf, threshold=30.0):
+def predict(current_df, nf, threshold=370.0):
     '''
     Predict future values using the trained N-HITS model.
 
@@ -164,11 +164,11 @@ def predict(current_df, nf, threshold=30.0):
     - forecast_df: DataFrame with predictions.
     '''
 
-    horizon = 144
+    horizon = 7
 
     # verify that we have enough past points
-    if len(current_df) < 288:
-        raise ValueError(f"NHITS needs 288 past points. You only provided {len(current_df)}.")
+    if len(current_df) < 18:
+        raise ValueError(f"NHITS needs 18 past points. You only provided {len(current_df)}.")
 
     # build the future dataframe with cyclical features
     future_dates = pd.date_range(
