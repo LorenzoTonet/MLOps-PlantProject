@@ -1,10 +1,17 @@
 # PlantMo
 
 ## Overview
+This project addresses the challenge of reactive plant care by developing an automated smart monitoring system. The system's scope encompasses the collection, aggregation, and continuous analysis of environmental data from four sensor types: light, temperature, humidity, and soil moisture, to enable data-driven decision-making and real-time visual-ization. It explicitly excludes direct physical interventions such as automated watering or climate control.
+The primary objectives are to design a reliable monitoring infrastructure that supports drift detection and the identification of anomalous environmental trends. System effec-tiveness will be measured through key performance indicators including Data Availability, Data Latency, System Reliability, Drift Detection Accuracy, and Dashboard Responsive-ness. This initiative is relevant because it fundamentally transforms plant cultivation from a manual, snapshot-based approach into a proactive, insight-driven practice. By delivering continuous monitoring and early warning capabilities, the system empowers users to maintain optimal growing conditions and implement timely interventions before environmental issues compromise plant conditions.
 
 ## Key Features
-
-## Dashboards
+- Monitoring of plant's environmental conditions.
+- Machine Learning kernel to predict watering necessities.
+- Detection of drifts in environment conditions (e.g. change of season, sensors failures...)
+- Customizable plant monitoring conditions (e.g. minimum light, maximum temperature)
+  
+## Dashboard
+<img width="1280" height="584" alt="image" src="https://github.com/user-attachments/assets/1babd03c-c980-4c2e-b678-0ad8c1cb43e1" />
 
 ### Real-time Monitoring Dashboard
 Interactive dashboard for visualizing plant conditions.
@@ -77,6 +84,11 @@ Interactive dashboard for visualizing plant conditions.
 git clone https://github.com/LorenzoTonet/MLOps-PlantMo.git
 cd MLOps-PlantMo
 pip install -r requirements.txt
+```
+```bash
+cd Board
+make install-core
+make
 ```
 
 ### Quick Start
