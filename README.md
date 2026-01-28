@@ -19,15 +19,24 @@ Interactive dashboard for visualizing plant conditions.
 | Run locally: `streamlit run executable.py`
 
 **Features:**
-
+- Data buffering
+- Real-time data monitoring
+- Multiple plant management
+- Synthetic data generation for test and debug purposes
 
 ### ML Model Monitoring
-
+The model registry is implemented using Weights & Biases (W&B), which provides integrated experiment tracking and model versioning capabilities. Each trained model is stored as a distinct artifact, uniquely associated with its version, configuration, and training context. Models are saved as immutable versions, ensuring that previously validated models remain accessible and unchanged.
 **Features:**
+- Save different model versions
+- Track performances
+- Have a comparison between different models
+- Track retrains
 
+### Cloud data storage
+The application is fully integrated with Weights and Biases application used to communicate with the local server and store real-time data.
 
 ## Architecture
-
+<img width="2560" height="2190" alt="image" src="https://github.com/user-attachments/assets/d78bf3fb-d0e1-4cce-869f-6284c6a2d42f" />
 
 ## Project Structure
 ```bash
@@ -113,7 +122,25 @@ make
 
 ## Documentation
 
-
+1. **System Specification Document (SSD)**
+   - Problem definition
+   - Data specifications
+   - Functional requirements
+   - Non functional requirements
+   - Project architecture
+   - Risk analysis
+2. **Project Proposal and Developement Plan**
+   - Deliverables
+   - Milestones
+   - WBS
+   - Sprint Plan
+   - DoD/DoR
+   - Resources and infrastructure
+3. **Operational Governance and Versioning Document**
+   - Version control strategy
+   - CI/CD reference
+   - Model lifecycle governance
+   - Monitoring and maintenance plan
 ## License
 
 This project is open source and available for educational and research purposes.
